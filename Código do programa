@@ -1,0 +1,300 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define LIMITE_FUNCIONARIOS 100
+#define TAM_MAX_NOME 100
+#define TAM_MAX_FUNCAO 100
+
+// Função para limpar o buffer do teclado, descartando caracteres remanescentes
+void limparBuffer() {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
+}
+
+// Estrutura para armazenar os dados do funcionário
+typedef struct {
+    char nome[TAM_MAX_NOME];
+    char funcao[TAM_MAX_FUNCAO];
+    float salarioBase;
+    // Adicionado campo para armazenar os dados sobre horas extras:
+    // Valor 0 indica que não tem disponibilidade para horas extras.
+    int horasExtrasDisponiveis;
+} Funcionario;
+
+Funcionario *funcionarios = NULL;  // Ponteiro para vetor dinâmico de funcionários
+int quantidade = 0;                // Contador de funcionários cadastrados
+
+// Lista de funções disponíveis
+const char *funcoes[] = {
+    "Manutencao",
+    "Assistente Tecnico",
+    "Faxineiro",
+    "Supervisor Geral",
+    "Atendimento"
+};
+
+// Salários base correspondentes às funções
+const float salariosBase[] = { 2500.0, 3000.0, 1800.0, 4000.0, 2200.0 };
+
+// Verifica se o nome contém apenas letras e espaços
+// Retorna 1 se válido, 0 caso contrário
+int nomeEhValido(char *nome) {
+    for (int i = 0; nome[i] != '\0'; i++) {
+        if (!((nome[i] >= 'A' && nome[i] <= 'Z') ||
+              (nome[i] >= 'a' && nome[i] <= 'z') ||
+              nome[i] == ' ')) {
+            return 0; // encontrou caractere inválido
+        }
+    }
+    return 1; // nome válido
+}
+
+// Valida a opção do menu lida como string, converte para inteiro e verifica se está entre 1 e 4
+// Retorna 1 se válido, 0 caso contrário, e atualiza 'opcao'
+int validarOpcaoMenu(char *entrada, int *opcao) {
+    char *endptr;
+    int valor = strtol(entrada, &endptr, 10); // converte string para inteiro
+
+    // Verifica se a conversão consumiu toda a string (sem lixo)
+    if (*endptr != '\0' && *endptr != '\n') {
+        return 0;
+    }
+
+    // Verifica se está dentro do intervalo válido
+    if (valor < 1 || valor > 4) {
+        return 0;
+    }
+
+    *opcao = valor;
+    return 1;
+}
+
+// Função para cadastrar um novo funcionário
+void cadastrarFuncionario() {
+    if (quantidade >= LIMITE_FUNCIONARIOS) {
+        printf("Limite de funcionários atingido.\n");
+        return;
+    }
+
+    Funcionario novo;
+
+    // Solicita o nome do funcionário, garantindo que seja válido
+    while (1) {
+        printf("Nome: ");
+        fgets(novo.nome, TAM_MAX_NOME, stdin); // lê linha do teclado
+        novo.nome[strcspn(novo.nome, "\n")] = '\0'; // remove o '\n' do final da string
+
+        if (!nomeEhValido(novo.nome)) {
+            printf("Nome inválido. Digite somente letras e espaços.\n");
+            continue;
+        }
+        break;
+    }
+
+    int escolhaFuncao;
+
+    // Exibe as funções disponíveis para o usuário escolher
+    printf("\n---SELECIONE A FUNÇÃO DO FUNCIONÁRIO\n\n");
+    for (int i = 0; i < 5; i++) {
+        printf("%d. %s\n", i + 1, funcoes[i]);
+    }
+
+    char entradaFuncao[10];
+    // Solicita e valida a escolha da função
+    while (1) {
+        printf("-> Opção = ");
+        if (fgets(entradaFuncao, sizeof(entradaFuncao), stdin) == NULL) {
+            printf("Erro na leitura. Tente novamente.\n");
+            continue;
+        }
+        // Limpa buffer caso entrada seja maior que o esperado
+        if (strchr(entradaFuncao, '\n') == NULL) limparBuffer();
+
+        char *endptr;
+        int valor = strtol(entradaFuncao, &endptr, 10);
+        if (*endptr != '\0' && *endptr != '\n') {
+            printf("Entrada inválida. Digite um número de 1 a 5.\n");
+            continue;
+        }
+        if (valor >= 1 && valor <= 5) {
+            escolhaFuncao = valor;
+            break;
+        }
+        printf("Função inválida.\n");
+    }
+
+    // Copia a função escolhida para o novo funcionário
+    strcpy(novo.funcao, funcoes[escolhaFuncao - 1]);
+    // Define o salário base de acordo com a função escolhida
+    novo.salarioBase = salariosBase[escolhaFuncao - 1];
+
+    // Pergunta sobre disponibilidade para horas extras
+    char respostaDisponibilidade[10];
+    while (1) {
+        printf("O funcionário tem disponibilidade para fazer horas extras? (sim/nao): ");
+        if (fgets(respostaDisponibilidade, sizeof(respostaDisponibilidade), stdin) == NULL) {
+            printf("Erro na leitura. Tente novamente.\n");
+            continue;
+        }
+        respostaDisponibilidade[strcspn(respostaDisponibilidade, "\n")] = '\0';  // remove o '\n'
+
+        if (strcmp(respostaDisponibilidade, "sim") == 0 || strcmp(respostaDisponibilidade, "nao") == 0) {
+            break;
+        } else {
+            printf("Entrada inválida. Por favor, digite 'sim' ou 'nao'.\n");
+        }
+    }
+
+    if (strcmp(respostaDisponibilidade, "sim") == 0) {
+        // Se o funcionário tem disponibilidade para horas extras, pergunta quantas horas por dia
+        char respostaHoras[10];
+        while (1) {
+            printf("Quantas horas extras por dia? Favor digitar '1' (uma hora) ou '2' (duas horas), apenas: ");
+            if (fgets(respostaHoras, sizeof(respostaHoras), stdin) == NULL) {
+                printf("Erro na leitura. Tente novamente.\n");
+                continue;
+            }
+            respostaHoras[strcspn(respostaHoras, "\n")] = '\0';  // remove o '\n'
+
+            if (strcmp(respostaHoras, "1") == 0 || strcmp(respostaHoras, "2") == 0) {
+                break;
+            } else {
+                printf("Entrada inválida. Por favor, digite '1' ou '2'.\n");
+            }
+        }
+        // Armazena a quantidade de horas extras disponíveis
+        if (strcmp(respostaHoras, "1") == 0) {
+            novo.horasExtrasDisponiveis = 1;
+        } else {
+            novo.horasExtrasDisponiveis = 2;
+        }
+    } else {
+        novo.horasExtrasDisponiveis = 0;
+    }
+
+    // Realoca memória para adicionar o novo funcionário ao vetor dinâmico
+    Funcionario *temp = realloc(funcionarios, (quantidade + 1) * sizeof(Funcionario));
+    if (temp == NULL) {
+        printf("Erro na alocação de memória.\n");
+        free(funcionarios);
+        exit(1);
+    }
+
+    funcionarios = temp;
+    funcionarios[quantidade] = novo;  // adiciona o novo funcionário no final do vetor
+    quantidade++;                    // incrementa contador
+
+    printf("\n***Funcionário cadastrado com sucesso!***\n");
+}
+
+// Função que lista todos os funcionários cadastrados
+void listarFuncionarios() {
+    if (quantidade == 0) {
+        printf("Nenhum funcionário cadastrado.\n");
+        return;
+    }
+
+    for (int i = 0; i < quantidade; i++) {
+        printf("\nFuncionário %d:\n", i + 1);
+        printf("Nome: %s\n", funcionarios[i].nome);
+        printf("Função: %s\n", funcionarios[i].funcao);
+        printf("Salário base: R$ %.2f\n", funcionarios[i].salarioBase);
+        if (funcionarios[i].horasExtrasDisponiveis > 0) {
+            printf("Tem disponibilidade para %d hora(s) extras por dia.\n", funcionarios[i].horasExtrasDisponiveis);
+        }
+    }
+}
+
+// Função para excluir um funcionário pelo índice informado pelo usuário
+void excluirFuncionario() {
+    if (quantidade == 0) {
+        printf("Nenhum funcionário para excluir.\n");
+        return;
+    }
+
+    listarFuncionarios(); // mostra os funcionários para o usuário escolher
+    int indice;
+    printf("\nInforme o número do funcionário a ser excluído (1 a %d): ", quantidade);
+    scanf("%d", &indice);
+    limparBuffer();
+
+    if (indice < 1 || indice > quantidade) {
+        printf("Índice inválido.\n");
+        return;
+    }
+
+    indice--; // ajustar índice para posição correta do vetor (0-based)
+    // Move todos os funcionários posteriores uma posição para trás, sobrescrevendo o excluído
+    for (int i = indice; i < quantidade - 1; i++) {
+        funcionarios[i] = funcionarios[i + 1];
+    }
+
+    quantidade--; // diminui o contador
+
+    // Realoca memória para o tamanho atualizado do vetor
+    funcionarios = realloc(funcionarios, quantidade * sizeof(Funcionario));
+
+    printf("\n***Funcionário excluído com sucesso!***\n");
+}
+
+// Função para liberar a memória alocada dinamicamente para os funcionários
+void liberarMemoria() {
+    free(funcionarios);
+}
+
+// Função que exibe o menu principal e processa as opções do usuário
+void menu() {
+    int opcao;
+    char entrada[10];
+
+    while (1) {
+        printf("\n--- DIGITE A OPÇÃO ---\n\n");
+        printf("1. Cadastrar funcionário\n");
+        printf("2. Listar funcionários\n");
+        printf("3. Excluir funcionário\n");
+        printf("4. Sair\n\n");
+        printf("-> Opção =  ");
+
+        // Lê a entrada do usuário como string
+        if (fgets(entrada, sizeof(entrada), stdin) == NULL) {
+            printf("Erro ao ler entrada.\n");
+            continue;
+        }
+
+        // Se o usuário digitar mais que o buffer, limpa o restante
+        if (strchr(entrada, '\n') == NULL)
+            limparBuffer();
+
+        // Valida se a opção está correta (1 a 4)
+        if (!validarOpcaoMenu(entrada, &opcao)) {
+            printf("Entrada inválida. Digite um número entre 1 e 4.\n");
+            continue;
+        }
+
+        // Executa ação conforme a opção escolhida
+        switch (opcao) {
+            case 1:
+                cadastrarFuncionario();
+                break;
+            case 2:
+                listarFuncionarios();
+                break;
+            case 3:
+                excluirFuncionario();
+                break;
+            case 4:
+                liberarMemoria();
+                printf("Encerrando o programa.\n");
+                return;
+            default:
+                printf("Opção inválida. Digite um número entre 1 e 4.\n");
+        }
+    }
+}
+
+// Função principal que inicia o programa
+int main() {
+    menu();  // chama o menu para interação com o usuário
+    return 0;
+}
